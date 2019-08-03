@@ -1,6 +1,7 @@
-const userModel = require('../models/user')
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
+const db = require('../models')
+const User = db.User
 
 const userController = {
 
@@ -15,23 +16,29 @@ const userController = {
       return next()
     }
 
-    userModel.get(username, (err, user) => {
-      if (err) {
-        req.flash('errorMessage', err.toString())
-        return next()
+    User.findOne({
+      where: {
+        username
       }
+    }).then(user => {
       if (!user) {
         req.flash('errorMessage', '使用者不存在')
         return next()
       }
+
       bcrypt.compare(password, user.password, function(err, isSuccess) {
         if (err || !isSuccess) {
           req.flash('errorMessage', '密碼錯誤')
           return next()
         }
         req.session.username = user.username
+        req.session.userId = user.id
         res.redirect('/')
       });
+
+    }).catch(err => {
+      req.flash('errorMessage', err.toString())
+      return next()
     })
     
   },
@@ -53,17 +60,17 @@ const userController = {
         return next()
       }
 
-      userModel.add({
+      User.create({
         username,
         nickname,
         password: hash
-      }, (err) => {
-        if (err) {
-          req.flash('errorMessage', err.toString())
-          return next()
-        }
+      }).then(user => {
         req.session.username = username
+        req.session.userId = user.id
         res.redirect('/')
+      }).catch(err => {
+        req.flash('errorMessage', err.toString())
+        return next()
       })
     });
   },

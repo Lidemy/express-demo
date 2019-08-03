@@ -1,44 +1,73 @@
-const commentModel = require('../models/comment')
+const db = require('../models')
+const Comment = db.Comment
+const User = db.User
 
 const commentController = {
   add: (req, res) => {
-    const {username} = req.session
+    const {userId} = req.session
     const {content} = req.body
-    if (!username || !content) {
+    if (!userId || !content) {
       return res.redirect('/')
     }
-    commentModel.add(username, content, err => {
-      return res.redirect('/')
+
+    Comment.create({
+      content,
+      UserId: userId
+    }).then(() => {
+      res.redirect('/')
     })
   },
 
-  index:  (req, res) => {
-    commentModel.getAll((err, results) => {
-      if (err) {
-        console.log(err)
-      }
+  index: (req, res) => {
+    Comment.findAll({
+      include: User
+    }).then(comments => {
       res.render('index', {
-        comments: results
+        comments
       })
     })
   },
 
   delete: (req, res) => {
-    commentModel.delete(req.session.username, req.params.id, err => {
+    Comment.findOne({
+      where: {
+        id: req.params.id,
+        UserId: req.session.userId
+      }
+    }).then(comment => {
+      return comment.destroy()
+    }).then(() => {
+      res.redirect('/')
+    }).catch(() => {
       res.redirect('/')
     })
   },
 
   update: (req, res) => {
-    commentModel.get(req.params.id, (err, result) => {
+    Comment.findOne({
+      where: {
+        id: req.params.id
+      }
+    }).then(comment => {
       res.render('update', {
-        comment: result
+        comment      
       })
     })
   },
 
   handleUpdate: (req, res) => {
-    commentModel.update(req.session.username, req.params.id, req.body.content, err => {
+    Comment.findOne({
+      where: {
+        id: req.params.id,
+        UserId: req.session.userId
+      }
+    }).then(comment => {
+      return comment.update({
+        content: req.body.content
+      })
+    }).then(() => {
+      res.redirect('/')
+    }).catch(() => {
       res.redirect('/')
     })
   }
